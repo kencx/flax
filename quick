@@ -1,0 +1,95 @@
+#!/bin/bash
+
+VERSION=0.0.1
+CONFIG=./config
+
+function help() {
+	cat << EOF
+usage: quick [subcommand] [filename]
+
+  Subcommand:
+    help     Returns help
+    version  Return version
+    config   Return config values
+    create   Create new note
+    list     List notes
+    edit     Edit existing note
+    cp       Copy existing note to configured location
+EOF
+}
+
+function parseConfig() {
+	if [[ -f "${CONFIG}" ]]; then
+		source "${CONFIG}"
+	fi
+}
+
+function create() {
+	# if $1 ends with /, it is a dir
+
+	local dir
+	local file
+	dir=$(dirname "$1")
+	file="$(basename "$1").md"
+
+	mkdir -p "$dir" && cd "$dir" || exit 1
+
+	if [[ ! -f "$file" ]]; then
+		touch "$file"
+	else
+		echo "note $1 already exists"
+	fi
+
+	local title
+	title=$(cat <<EOF
+
+# $file
+
+EOF
+)
+	echo "$title" >> "$file"
+}
+
+function list() {
+	if [[ -d "$1" ]]; then
+		find "$1" -name "*.md" -type f | sed -r 's/(.*)\.md$/\1/'
+	else
+		find . -name "*.md" ! -name "README.md" -type f | sed -r 's/^\.\/(.*)\.md$/\1/'
+	fi
+}
+
+function edit() {
+	local file
+	file="$1.md"
+
+	if [[ -f "$file" ]]; then
+		"${editor}" "$file"
+	else
+		echo "note $1 not found"
+		exit 1
+	fi
+}
+
+# -------
+
+parseConfig
+
+subcommand="$1"
+shift
+case "${subcommand}" in
+	"version" | "-v" | "--version")
+		echo "v${VERSION}";;
+	"config")
+		cat "$CONFIG";;
+	"new")
+		create "$@";;
+	"list" | "ls")
+		list "${1:-"."}";;
+	"copy" | "cp")
+		cp "$1" "${hugo}";;
+	"edit")
+		edit "$1" ;;
+	*)
+		help ;;
+esac
+
