@@ -3,6 +3,10 @@
 VERSION=0.0.1
 CONFIG=./config
 
+EDITOR="nvim"
+DEFAULT_LOCATION="./notes/"
+HUGO_LOCATION="./hugo/"
+
 function help() {
 	cat << EOF
 usage: quick [subcommand] [filename]
@@ -25,11 +29,23 @@ function parseConfig() {
 }
 
 function create() {
-	# if $1 ends with /, it is a dir
-
 	local dir
 	local file
-	dir=$(dirname "$1")
+
+	# mkdir if $1 ends with /
+	if [[ "$1" =~ \/$ ]]; then
+		dir="$DEFAULT_LOCATION$1"
+
+		if [[ ! -d "$dir" ]]; then
+			mkdir -p "$dir"
+			exit 0
+		else
+			echo "dir $1 already exists"
+			exit 1
+		fi
+	fi
+
+	dir="$DEFAULT_LOCATION$(dirname "$1")"
 	file="$(basename "$1").md"
 
 	mkdir -p "$dir" && cd "$dir" || exit 1
@@ -38,6 +54,7 @@ function create() {
 		touch "$file"
 	else
 		echo "note $1 already exists"
+		exit 1
 	fi
 
 	local title
@@ -48,45 +65,92 @@ function create() {
 EOF
 )
 	echo "$title" >> "$file"
+	exit 0
 }
 
 function list() {
-	if [[ -d "$1" ]]; then
-		find "$1" -name "*.md" -type f | sed -r 's/(.*)\.md$/\1/'
+	local dir
+	dir="$DEFAULT_LOCATION$1"
+	if [[ -d "$dir" ]]; then
+		find "$dir" -name "*.md" -type f | sed -r 's/^\.\/(.*)\.md$/\1/'
 	else
-		find . -name "*.md" ! -name "README.md" -type f | sed -r 's/^\.\/(.*)\.md$/\1/'
+		find "$DEFAULT_LOCATION" -name "*.md" ! -name "README.md" -type f | sed -r 's/^\.\/(.*)\.md$/\1/'
+
 	fi
 }
 
 function edit() {
 	local file
-	file="$1.md"
+	file="$DEFAULT_LOCATION$1.md"
 
 	if [[ -f "$file" ]]; then
-		"${editor}" "$file"
+		"${EDITOR}" "$file"
 	else
 		echo "note $1 not found"
 		exit 1
 	fi
 }
 
+function copy() {
+	if [[ $# -lt 1 ]]; then
+		echo "destination needed"
+		exit 1
+	fi
+
+	local file="${HUGO_LOCATION}$1.md"
+	local dir
+
+	# if output path provided, rename file and create parent dirs if not exist
+	if [[ $# -ge 3 ]]; then
+		path="$3"
+		dir="${HUGO_LOCATION}$(dirname "$path")"
+
+		if [[ ! -d "$dir" ]]; then
+			mkdir -p "$dir"
+		fi
+		file="${HUGO_LOCATION}$3.md"
+	fi
+
+	if [[ "$2" == "hugo" ]]; then
+		# prepend file contents with hugo metadata
+		local metadata
+		metadata=$(cat <<EOF
+---
+title: $1
+date: $(date '+%Y-%m-%d')
+lastmod:
+---
+EOF
+)
+
+		printf '%s\n%s\n' "$metadata" "$(cat "$DEFAULT_LOCATION$1.md")" > "$DEFAULT_LOCATION$1.md"
+
+		cp "$DEFAULT_LOCATION$1.md" "$file"
+		echo "$1 copied to $file"
+		exit 0
+	else
+		echo "destination not recognized"
+		exit 1
+	fi
+}
+
 # -------
 
-parseConfig
-
+# parseConfig
 subcommand="$1"
 shift
+
 case "${subcommand}" in
 	"version" | "-v" | "--version")
-		echo "v${VERSION}";;
+		echo "v${VERSION}" ;;
 	"config")
-		cat "$CONFIG";;
+		cat "$CONFIG" ;;
 	"new")
-		create "$@";;
+		create "$@" ;;
 	"list" | "ls")
-		list "${1:-"."}";;
+		list "${1:-"$DEFAULT_LOCATION"}" ;;
 	"copy" | "cp")
-		cp "$1" "${hugo}";;
+		copy "$@" ;;
 	"edit")
 		edit "$1" ;;
 	*)
