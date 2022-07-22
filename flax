@@ -9,7 +9,7 @@ HUGO_LOCATION="./hugo/"
 
 function help() {
 	cat << EOF
-usage: quick [subcommand] [filename]
+usage: flax [subcommand] [filename]
 
   Subcommand:
     help     Returns help
