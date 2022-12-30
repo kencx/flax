@@ -1,4 +1,7 @@
-.PHONY: clean
+.PHONY: install uninstall
 
-clean:
-	find . -name "*.md" ! -name "README.md" -type f -exec rm {} \;
+install:
+	install -m755 flax ~/bin/flax
+
+uninstall:
+	rm ~/bin/flax

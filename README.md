@@ -1,49 +1,80 @@
 # flax
-flaxly create, list and edit markdown notes
+
+flax is an opinionated wrapper for [Hugo](https://gohugo.io/).
+
+With flax, I can quickly:
+- list and access Hugo documents
+- add new Hugo documents based on custom archetypes
+
+from anywhere in my filesystem.
+
+## Installation
+
+``` bash
+$ make install
+```
+
+flax has the following dependencies:
+- hugo
+- fzf
+- sed
+- which
+
+## Usage
+
+```
+usage: flax [subcommand] [filename]
+
+  Subcommand:
+    help     Returns help
+    version  Return version
+    ls       List notes
+    new      Create new note
+    blog     Create new Hugo doc based on archetypes
+```
+
+```
+usage: flax blog [archetype] [dir/]foo
+
+  Supported archetypes: posts notes books
+
+  Examples:
+    flax blog post hello-world
+    flax blog note bash/functions
+```
 
 ```bash
-# create file with comment
-$ flax new "hello" -c "Hello world"
+# list all documents
+$ flax ls
 
-# create new subdirectory
-$ flax new "go/"
+# create empty foo.md
+$ flax new foo
 
-# create new file within existing subdirectory
-$ flax new "go/hello"
+# create empty foo/bar.md
+# flax new foo/bar
 
-# list all files
-$ flax list
+# create new hugo post `foo.md`
+$ flax blog post foo
 
-# list all files in a subdirectory
-$ flax list go
+# create new hugo note `bar.md`
+$ flax blog note bar
 
-# edit file
-$ flax edit "hello"
+# create new hugo note `foo/bar.md`
+$ flax blog note foo/bar
 ```
 
-These notes are placed in your directory of choice. It is compatible with Obsidian.md, by setting the default location to your Obsidian vault with the `DEFAULT_LOCATION` env variable
-
-```ini
-$ DEFAULT_LOCATION="./hugo/" flax new "hello"
-```
-
-Notes can be copied and moved to different locations. For example, copying an Obisidian note to Hugo for a blog post
+## Configuration
 
 ```bash
-$ flax cp "go/hello" hugo
-$ flax cp "go/hello" hugo "notes/go/hello"
-```
+EDITOR="nvim"
 
-Hugo's location is set with the `HUGO_LOCATION` env variable
+# must contain Hugo config file `config.toml`
+HUGO_DIR="path/to/hugo/dir"
+CONTENT_DIR="$HUGO_DIR/content"
 
-```ini
-$ HUGO_LOCATION="./hugo/" flax cp "go/hello" hugo
-```
+# custom supported archetypes
+ARCHETYPES=(posts notes books projects)
+DEFAULT_ARCHETYPE="notes"
 
-We can include default and custom Hugo [metadata](https://gohugo.io/content-management/front-matter/) to prepend to the copy
-
-```ini
-title:
-date:
-lastmod:
+FZF_CMD=(fzf -m --ansi --cycle --delimiter='/' "--with-nth=-3,-2,-1")
 ```
