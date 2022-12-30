@@ -125,6 +125,7 @@ function blog() {
     esac
 
     cd "$HUGO_DIR" && hugo new "$ARCH/$2.md"
+    $EDITOR "$CONTENT_DIR/$ARCH/$2.md"
     exit 0
 }
 
