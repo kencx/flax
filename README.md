@@ -47,6 +47,9 @@ usage: flax blog [archetype] [dir/]foo
 # list all documents
 $ flax ls
 
+# list hugo drafts in foo/bar
+$ flax ls draft foo/bar
+
 # create empty foo.md
 $ flax new foo
 

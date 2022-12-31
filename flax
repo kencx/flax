@@ -12,7 +12,7 @@ FZF_CMD=(fzf -m --ansi --cycle --delimiter='/' "--with-nth=-3,-2,-1")
 
 function help() {
 	cat << EOF
-usage: flax [subcommand] [filename]
+usage: flax [subcommand] [args]
 
   Subcommand:
     help     Returns help
@@ -35,13 +35,33 @@ usage: flax blog [archetype] [dir/]foo
 EOF
 }
 
+function lsHelp() {
+    cat <<EOF
+usage: flax ls [option] [path]
+
+  Options:
+    draft  List drafts
+EOF
+}
+
 function list() {
-	local dir
-	dir="$CONTENT_DIR$1"
+	local dir="$CONTENT_DIR$1"
+    local regex='s/^\.\/(.*)\.md$/\1/'
+
+    if [[ $1 == "draft" ]]; then
+        dir="$CONTENT_DIR$2"
+        if [[ -d "$dir" ]]; then
+            find "$dir" -name "*.md" -type f -exec grep -l "draft: true" {} \; | sed -r "$regex"
+        else
+            find "$CONTENT_DIR" -name "*.md" -type f -exec grep -l "draft: true" {} \; | sed -r "$regex"
+        fi
+        exit 0
+    fi
+
 	if [[ -d "$dir" ]]; then
-		find "$dir" -name "*.md" -type f | sed -r 's/^\.\/(.*)\.md$/\1/'
+		find "$dir" -name "*.md" -type f | sed -r "$regex"
 	else
-		find "$CONTENT_DIR" -name "*.md" -type f | sed -r 's/^\.\/(.*)\.md$/\1/'
+		find "$CONTENT_DIR" -name "*.md" -type f | sed -r "$regex"
 	fi
 }
 
@@ -138,7 +158,7 @@ case "${subcommand}" in
 	"version" | "-v" | "--version")
 		echo "v${VERSION}" ;;
     "ls")
-        SELECTED="$(list "${1:-$CONTENT_DIR}" | "${FZF_CMD[@]}")"
+        SELECTED="$(list "$@" | "${FZF_CMD[@]}")"
         if [[ -n $SELECTED ]]; then
             # allow SELECTED to be split
             $EDITOR $SELECTED
