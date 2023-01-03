@@ -127,6 +127,7 @@ function blog() {
 
     if [[ $# -lt 2 ]]; then
         cd "$HUGO_DIR" && hugo new "$DEFAULT_ARCHETYPE/$1.md"
+        $EDITOR "$CONTENT_DIR/$DEFAULT_ARCHETYPE/$1.md"
         exit 0
     fi
 
