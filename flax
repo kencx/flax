@@ -1,54 +1,44 @@
 #!/bin/bash
 
-VERSION=0.0.2
+VERSION=0.0.3
 
 EDITOR="nvim"
 HUGO_DIR="$HOME/dev/blog"
 CONTENT_DIR="$HUGO_DIR/content/"
-
-ARCHETYPES=(posts notes books projects)
-DEFAULT_ARCHETYPE="notes"
 FZF_CMD=(fzf -m --ansi --cycle --delimiter='/' "--with-nth=-3,-2,-1")
 
+if ! which hugo >/dev/null; then
+    echo "Hugo must be installed!"
+    exit 1
+fi
+
+if [[ ! -f "$HUGO_DIR/config.toml" ]]; then
+    echo "Not a Hugo directory!"
+    exit 1
+fi
+
 function help() {
-	cat << EOF
+    cat <<EOF
 usage: flax [subcommand] [args]
 
   Subcommand:
-    help     Returns help
-    version  Return version
-    ls       List notes
-    new      Create new note
-    blog     Create new document based on archetypes
-EOF
-}
-
-function blogHelp() {
-    cat <<EOF
-usage: flax blog [archetype] [dir/]foo
-
-  Supported archetypes: ${ARCHETYPES[@]}
-
-  Examples:
-    flax blog post hello-world
-    flax blog note bash/functions
-EOF
-}
-
-function lsHelp() {
-    cat <<EOF
-usage: flax ls [option] [path]
-
-  Options:
-    draft  List drafts
+    help         Returns help
+    version      Return version
+    ls [drafts]  List notes
+    new [path]   Create new document
 EOF
 }
 
 function list() {
-	local dir="$CONTENT_DIR$1"
+    local dir="$CONTENT_DIR$1"
     local regex='s/^\.\/(.*)\.md$/\1/'
 
-    if [[ $1 == "draft" ]]; then
+    case "$1" in
+    "help" | "h")
+        help
+        exit 1
+        ;;
+    "draft" | "drafts" | "d")
         dir="$CONTENT_DIR$2"
         if [[ -d "$dir" ]]; then
             find "$dir" -name "*.md" -type f -exec grep -l "draft: true" {} \; | sed -r "$regex"
@@ -56,120 +46,47 @@ function list() {
             find "$CONTENT_DIR" -name "*.md" -type f -exec grep -l "draft: true" {} \; | sed -r "$regex"
         fi
         exit 0
-    fi
+        ;;
+    *)
+        if [[ -d "$dir" ]]; then
+            find "$dir" -name "*.md" -type f | sed -r "$regex"
+        else
+            find "$CONTENT_DIR" -name "*.md" -type f | sed -r "$regex"
+        fi
+        ;;
+    esac
 
-	if [[ -d "$dir" ]]; then
-		find "$dir" -name "*.md" -type f | sed -r "$regex"
-	else
-		find "$CONTENT_DIR" -name "*.md" -type f | sed -r "$regex"
-	fi
 }
 
 function create() {
-	local dir
-	local file
-
-	# mkdir if $1 ends with /
-	if [[ "$1" =~ \/$ ]]; then
-		dir="$CONTENT_DIR$1"
-
-		if [[ ! -d "$dir" ]]; then
-			mkdir -p "$dir"
-			exit 0
-		else
-			echo "dir $1 already exists"
-			exit 1
-		fi
-	fi
-
-	dir="$CONTENT_DIR$(dirname "$1")"
-	file="$(basename "$1").md"
-
-	mkdir -p "$dir" && cd "$dir" || exit 1
-
-	if [[ ! -f "$file" ]]; then
-		touch "$file"
-	else
-		echo "note $1 already exists"
-		exit 1
-	fi
-
-	local title
-	title=$(cat <<EOF
-
-# $file
-
-EOF
-)
-	echo "$title" >> "$file"
-	exit 0
-}
-
-function checkHugo() {
-    if ! which hugo > /dev/null; then
-        echo "Hugo must be installed!"
-        exit 1
-    fi
-
-    if [[ ! -f "$HUGO_DIR/config.toml" ]]; then
-        echo "Not a Hugo directory!";
-        exit 1
-    fi
-}
-
-function blog() {
-    checkHugo
-
     if [[ $# -lt 1 ]]; then
-        blogHelp
+        help
         exit 1
     fi
 
-    if [[ $# -lt 2 ]]; then
-        cd "$HUGO_DIR" && hugo new "$DEFAULT_ARCHETYPE/$1.md"
-        $EDITOR "$CONTENT_DIR/$DEFAULT_ARCHETYPE/$1.md"
-        exit 0
-    fi
-
-    # TODO not really dynamic
-    # i wanted to allow short forms of the archetypes
-    # but that doesn't really work when they're custom;
-    # it has to be one or the other
-    case "$1" in
-        "notes"|"note"|"n") ARCH="notes" ;;
-        "posts"|"post"|"p") ARCH="posts" ;;
-        "books"|"book"|"b") ARCH="books" ;;
-        "projects"|"project"|"pr") ARCH="projects" ;;
-
-        *) blogHelp
-        exit 1 ;;
-    esac
-
-    cd "$HUGO_DIR" && hugo new "$ARCH/$2.md"
-    $EDITOR "$CONTENT_DIR/$ARCH/$2.md"
+    cd "$HUGO_DIR" && hugo new "$1.md" >/dev/null 2>&1
+    $EDITOR "$CONTENT_DIR/$1.md"
     exit 0
 }
-
-# -------
 
 subcommand="$1"
 shift
 
 case "${subcommand}" in
-	"version" | "-v" | "--version")
-		echo "v${VERSION}" ;;
-    "ls")
-        SELECTED="$(list "$@" | "${FZF_CMD[@]}")"
-        if [[ -n $SELECTED ]]; then
-            # allow SELECTED to be split
-            $EDITOR $SELECTED
-        fi
-        ;;
-	"new")
-		create "$@" ;;
-    "blog"|"b")
-        blog "$@" ;;
-	*)
-		help ;;
+"version" | "-v" | "--version")
+    echo "v${VERSION}"
+    ;;
+"ls")
+    SELECTED="$(list "$@" | "${FZF_CMD[@]}")"
+    if [[ -n $SELECTED ]]; then
+        # allow SELECTED to be split
+        $EDITOR $SELECTED
+    fi
+    ;;
+"new")
+    create "$@"
+    ;;
+*)
+    help
+    ;;
 esac
-
